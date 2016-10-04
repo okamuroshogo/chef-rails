@@ -1,0 +1,40 @@
+[client]
+port        = 3306
+socket      = /var/lib/mysql/mysql.sock
+
+
+[mysqld]
+port        = 3306
+socket      = /var/lib/mysql/mysql.sock
+skip-external-locking
+max_allowed_packet = 1M
+myisam_sort_buffer_size = 1M
+table_open_cache =  150
+
+
+
+log-bin          = mysql-bin
+binlog_format    = mixed
+expire_logs_days = 10
+
+
+
+innodb_data_home_dir = /var/lib/mysql
+innodb_data_file_path = ibdata1:128M:autoextend
+innodb_log_group_home_dir = /var/lib/mysql
+innodb_log_buffer_size = 8M
+innodb_flush_log_at_trx_commit = 1
+innodb_lock_wait_timeout = 50
+innodb_file_per_table = 1
+innodb_log_files_in_group = 2
+
+
+
+<% @mysql_params.each_pair do | name, value | %>
+<%= name %> = <%= value %>
+<% end %>
+
+
+
+[mysql]
+no-auto-rehash
