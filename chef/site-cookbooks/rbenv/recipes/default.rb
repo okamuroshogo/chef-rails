@@ -71,3 +71,8 @@ execute "rbenv global #{node['ruby-env']['version']}" do
   group node['ruby-env']['group']
   not_if "grep #{node['ruby-env']['version']} /home/#{node['ruby-env']['user']}/.rbenv/version"
 end
+
+#execute 'change owner and mode' do
+#  not_if "ls -ld /usr/local/rbenv/versions | awk '{ print $4 }' | grep rbenv"
+#  command 'chown -R vagrant:vagrant /usr/local/rbenv'
+#end
