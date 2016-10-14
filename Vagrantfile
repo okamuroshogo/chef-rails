@@ -12,7 +12,7 @@ Vagrant.configure("2") do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://atlas.hashicorp.com/search.
-  config.vm.box = "centos"
+  config.vm.box = "centos6-7"
 
   config.vm.network "private_network", ip: "192.168.33.104"
   config.vm.provider "virtualbox" do |vb|

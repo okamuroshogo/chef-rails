@@ -6,52 +6,73 @@
 #
 # All rights reserved - Do Not Redistribute
 #
-# 必要なパッケージのインストール (yum等、何を使用するかは環境依存)
-# http://docs.getchef.com/resource_package.html
-%w{git gcc openssl-devel readline-devel}.each do |pkg|
+%w(gcc openssl-devel readline-devel git).each do |pkg|
   package pkg do
     action :install
   end
 end
 
-# rbenvのダウンロード
-# http://docs.getchef.com/resource_git.html
-git "/usr/local/rbenv" do
-  repository "https://github.com/sstephenson/rbenv.git"
-  revision "master"
+git "/home/#{node['ruby-env']['user']}/.rbenv" do
+  repository node['ruby-env']['rbenv_url']
+  reference 'master'
   action :sync
+  group node['ruby-env']['group']
+  user node['ruby-env']['user']
 end
 
-# プラグインディレクトリの作成
-# http://docs.getchef.com/resource_directory.html
-directory "/usr/local/rbenv/plugins" do
+# bash_profileが他のレシピでも変更されている場合は、このやり方だとダメ
+template '.bash_profile' do
+  source 'bash_profile.erb'
+  path "/home/#{node['ruby-env']['user']}/.bash_profile"
+  mode '0644'
+  owner node['ruby-env']['user']
+  group node['ruby-env']['group']
+  not_if "grep rbenv /home/#{node['ruby-env']['user']}/.bash_profile"
+end
+
+directory "/home/#{node['ruby-env']['user']}/.rbenv/plugins" do
+  owner node['ruby-env']['user']
+  group node['ruby-env']['group']
+  mode '0755'
   action :create
 end
 
-# ruby-buildプラグインのダウンロード
-git "/usr/local/rbenv/plugins/ruby-build" do
-  repository "https://github.com/sstephenson/ruby-build.git"
-  revision "master"
-  action :sync
+%w(ruby-build rbenv-default-gems rbenv-gem-rehash).each do |plgin|
+  git "/home/#{node['ruby-env']['user']}/.rbenv/plugins/#{plgin}" do
+    repository node['ruby-env']["#{plgin}_url"]
+    reference 'master'
+    action :sync
+    group node['ruby-env']['group']
+    user node['ruby-env']['user']
+  end
 end
 
-# bashの環境設定を行うシェルスクリプトの設置 (先程作成したテンプレートファイルを利用)
-# http://docs.getchef.com/resource_template.html
-template "/etc/profile.d/rbenv.sh" do
-  source "rbenv.sh.erb"
-  action :create
+template 'default-gems' do
+  source 'default-gems.erb'
+  path "/home/#{node['ruby-env']['user']}/.rbenv/default-gems"
+  mode '0755'
+  owner node['ruby-env']['user']
+  group node['ruby-env']['group']
+  not_if { File.exists?("/home/#{node['ruby-env']['user']}/.rbenv/default-gems") }
 end
 
-# rubyのインストール
-# http://docs.getchef.com/resource_bash.html
-bash "install-ruby-with-rbenv" do
-  code "source /etc/profile.d/rbenv.sh && rbenv install 2.2.4 && rbenv rehash"
-  action :run
-  not_if { File.exists?('/usr/local/rbenv/versions/2.2.4') }
+execute "rbenv install #{node['ruby-env']['version']}" do
+  command "/home/#{node['ruby-env']['user']}/.rbenv/bin/rbenv install #{node['ruby-env']['version']}"
+  environment 'HOME' => "/home/#{node['ruby-env']['user']}"
+  user node['ruby-env']['user']
+  group node['ruby-env']['group']
+  not_if { File.exists?("/home/#{node['ruby-env']['user']}/.rbenv/versions/#{node['ruby-env']['version']}") }
 end
 
-# bundlerのインストール
-bash "install-bundler" do
-  code "source /etc/profile.d/rbenv.sh && rbenv global 2.2.4 && rbenv exec gem install bundler && rbenv rehash"
-  action :run
+execute "rbenv global #{node['ruby-env']['version']}" do
+  command "/home/#{node['ruby-env']['user']}/.rbenv/bin/rbenv global #{node['ruby-env']['version']}"
+  environment 'HOME' => "/home/#{node['ruby-env']['user']}"
+  user node['ruby-env']['user']
+  group node['ruby-env']['group']
+  not_if "grep #{node['ruby-env']['version']} /home/#{node['ruby-env']['user']}/.rbenv/version"
 end
+
+#execute 'change owner and mode' do
+#  not_if "ls -ld /usr/local/rbenv/versions | awk '{ print $4 }' | grep rbenv"
+#  command 'chown -R vagrant:vagrant /usr/local/rbenv'
+#end
